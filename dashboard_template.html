@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Portfolio News Lens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Source+Serif+4:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f3f5fa;--card:#fff;--ink:#14183a;--mute:#6b7194;--line:#dde1ee;--neg:#e5484d;--pos:#12a594;--mix:#e5a50a;--none:#e7e9f3;--acc:#3b4cca}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1230;--card:#171c43;--ink:#eef0ff;--mute:#9aa1cf;--line:#2a3070;--neg:#ff6b70;--pos:#2ed3bd;--mix:#ffc53d;--none:#222855;--acc:#8e9bff}}
+:root[data-theme="dark"]{--bg:#0e1230;--card:#171c43;--ink:#eef0ff;--mute:#9aa1cf;--line:#2a3070;--neg:#ff6b70;--pos:#2ed3bd;--mix:#ffc53d;--none:#222855;--acc:#8e9bff}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*:before,*:after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Source Serif 4",Georgia,serif}
+h1,h2,h3,.sans{font-family:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif}
+main{max-width:1080px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:clamp(28px,5vw,44px);line-height:1.05;margin:8px 0 6px;letter-spacing:-.02em}
+h2{font-size:20px;margin:0 0 4px}
+.sub{color:var(--mute);margin:0 0 18px;max-width:62ch}
+.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
+.tag{font:500 13px "Bricolage Grotesque",sans-serif;background:var(--card);border:1px solid var(--line);border-radius:99px;padding:4px 12px;color:var(--mute)}
+button{font:inherit;cursor:pointer}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:18px}
+.pressure{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:640px){.pressure{grid-template-columns:1fr}}
+.p h3{margin:0 0 2px;font-size:15px;color:var(--mute);font-weight:500}
+.verdict{font:700 22px "Bricolage Grotesque",sans-serif;margin-bottom:8px}
+.dv{position:relative;height:14px;background:var(--none);border-radius:8px;overflow:hidden}
+.dv:after{content:"";position:absolute;left:50%;top:0;bottom:0;width:2px;background:var(--ink);opacity:.4}
+.dv i{position:absolute;top:0;bottom:0;border-radius:8px}
+.note{font-size:14px;color:var(--mute);margin:8px 0 0}
+.expo{display:flex;height:34px;border-radius:9px;overflow:hidden;gap:2px;margin:10px 0 6px}
+.expo div{display:flex;align-items:center;padding:0 8px;font:500 13px "Bricolage Grotesque",sans-serif;color:#fff;white-space:nowrap;overflow:hidden}
+.grid{display:grid;grid-template-columns:minmax(140px,1.5fr) repeat(3,1fr);gap:6px;align-items:stretch}
+.gh{font:500 13px "Bricolage Grotesque",sans-serif;color:var(--mute);padding:0 4px 4px}
+.hold{display:flex;flex-direction:column;justify-content:center;padding:8px 4px;border:0;background:none;text-align:left;color:var(--ink);border-radius:10px}
+.hold:hover,.hold.on{background:var(--none)}
+.hold b{font:700 15px "Bricolage Grotesque",sans-serif}
+.hold span{font-size:13px;color:var(--mute)}
+.wb{height:4px;border-radius:3px;background:var(--acc);margin-top:5px;opacity:.7}
+.cell{border-radius:10px;min-height:54px;display:flex;flex-direction:column;align-items:center;justify-content:center;font:700 14px "Bricolage Grotesque",sans-serif;color:#fff;text-align:center;padding:4px}
+.cell small{font:500 11px "Bricolage Grotesque",sans-serif;opacity:.9}
+.cell.n{background:var(--none);color:var(--mute)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--mute);margin-top:12px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+#drill{margin-top:14px;padding:14px;border-left:4px solid var(--acc);background:var(--none);border-radius:0 10px 10px 0;display:none;font-size:15px}
+.news{border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:var(--card)}
+.news>button{width:100%;text-align:left;background:none;border:0;color:var(--ink);padding:14px 16px;display:flex;gap:12px;justify-content:space-between;align-items:flex-start}
+.news .t{font:700 16px "Bricolage Grotesque",sans-serif}
+.news .m{font-size:13px;color:var(--mute)}
+.body{display:none;padding:0 16px 16px}
+.news.open .body{display:block}
+.chain{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0 10px;font:500 13px "Bricolage Grotesque",sans-serif}
+.chain span{background:var(--none);border-radius:8px;padding:4px 10px}
+.chain em{color:var(--mute);font-style:normal}
+.chev{transition:transform .2s;color:var(--mute)}
+.news.open .chev{transform:rotate(90deg)}
+.hit{font-size:14px;margin:4px 0}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+.foot{font-size:13px;color:var(--mute);margin-top:24px}
+button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+</style></head><body><main>
+<div class="bar"><span class="tag">Portfolio News Lens</span><span class="tag">__TAG__</span></div>
+<h1>What today's news means for what you own</h1>
+<p class="sub">Each headline is traced through sectors and costs to your holdings. Impact depends on how hard the news hits and how much of your money sits there. Direction is shown in colour, degree in the label.</p>
+
+<section class="card"><h2>News pressure so far</h2>
+<p class="sub" style="margin-bottom:12px">Net effect of today's headlines on your holdings, weighted by position size. This reads news only, not prices or valuation.</p>
+<div class="pressure" id="pressure"></div></section>
+
+<section class="card"><h2>Where your money sits</h2>
+<div class="expo" id="expo"></div><div class="note" id="expoNote"></div></section>
+
+<section class="card"><h2>Impact by holding and horizon</h2>
+<p class="sub" style="margin-bottom:12px">Tap a holding to see which headlines drive its colour.</p>
+<div class="grid" id="grid"></div>
+<div class="legend"><span><i style="background:var(--neg)"></i>Negative</span><span><i style="background:var(--pos)"></i>Positive</span><span><i style="background:var(--mix)"></i>Pulling both ways</span><span><i style="background:var(--none)"></i>No news</span><span>Low, Medium and High show the degree</span></div>
+<div id="drill"></div></section>
+
+<section><h2 style="margin-bottom:10px">Headlines and the reasoning behind them</h2><div id="news"></div></section>
+<p class="foot">Each headline is judged on its own, without assuming later news will contradict it. Year-ahead views are a thesis, not a forecast. This is not investment advice.</p>
+</main>
+<script>
+var H=__H__;
+var NEWS=__NEWS__;
+var HZ=["Today","This month","A year or more"];
+function wf(w){return w>=12?3:w>=6?2:1}
+var C=H.map(function(h,i){var r=[];for(var k=0;k<3;k++){var pos=0,neg=0,drv=[];NEWS.forEach(function(n,ni){var s=n.e[i];if(s&&s[k]){var v=s[k]*wf(h[2]);v>0?pos+=v:neg+=v;drv.push([ni,v])}});r.push({pos:pos,neg:neg,net:pos+neg,drv:drv})}return r});
+function lab(a){return a>=6?"High":a>=3?"Medium":"Low"}
+function cls(c){if(!c.drv.length)return "n";var m=Math.max(c.pos,-c.neg);if(c.pos&&c.neg&&Math.abs(c.net)<m/2)return "mix";return c.net>0?"pos":"neg"}
+function col(k){return k=="pos"?"var(--pos)":k=="neg"?"var(--neg)":k=="mix"?"var(--mix)":"var(--none)"}
+var P=document.getElementById("pressure");
+for(var k=0;k<3;k++){var pp=0,nn=0;H.forEach(function(h,i){var c=C[i][k];pp+=c.pos*h[2];nn+=c.neg*h[2]});var tot=pp-nn,net=(pp+nn)/(tot||1);var v=Math.abs(net)<.2?"Mixed":net>0?"Leaning positive":"Leaning negative";var w=Math.min(50,Math.abs(net)*50);
+P.innerHTML+='<div class="p"><h3>'+HZ[k]+'</h3><div class="verdict" style="color:'+(Math.abs(net)<.2?"var(--mix)":net>0?"var(--pos)":"var(--neg)")+'">'+v+'</div><div class="dv"><i style="background:'+(net>0?"var(--pos)":"var(--neg)")+';'+(net>0?"left:50%":"right:50%")+';width:'+w+'%"></i></div><p class="note">'+"Net of all headlines, weighted by position size."+'</p></div>'}
+var sec={},cols={Autos:"#3b4cca",Banks:"#0d8a7b",IT:"#8a4fd0",Paints:"#c2621a",Energy:"#a08400",Power:"#5a6385"};
+H.forEach(function(h){sec[h[1]]=(sec[h[1]]||0)+h[2]});
+document.getElementById("expo").innerHTML=Object.keys(sec).map(function(s){return '<div style="flex:'+sec[s]+';background:'+(cols[s]||'#5a6385')+'">'+s+" "+sec[s]+"%</div>"}).join("");
+var topS=Object.keys(sec).sort(function(a,b){return sec[b]-sec[a]})[0];document.getElementById("expoNote").textContent=topS+" is your largest sector at "+Math.round(sec[topS])+"%, so news about it counts the most.";
+var G=document.getElementById("grid");G.innerHTML='<div class="gh">Holding and weight</div>'+HZ.map(function(z){return '<div class="gh">'+z+'</div>'}).join("");
+H.forEach(function(h,i){var b=document.createElement("button");b.className="hold";b.innerHTML="<b>"+h[0]+"</b><span>"+h[1]+", "+h[2]+"%</span><div class='wb' style='width:"+Math.min(100,h[2]*6)+"%'></div>";b.onclick=function(){drill(i,b)};G.appendChild(b);
+C[i].forEach(function(c){var k=cls(c),d=document.createElement("div");d.className="cell "+(k=="n"?"n":"");if(k!="n"){d.style.background=col(k);if(k=="mix")d.style.color="#14183a"}
+d.innerHTML=k=="n"?"No news":k=="mix"?"Mixed<small>both ways</small>":lab(Math.abs(c.net))+"<small>"+(k=="pos"?"positive":"negative")+"</small>";G.appendChild(d)})});
+function drill(i,b){document.querySelectorAll(".hold").forEach(function(x){x.classList.remove("on")});b.classList.add("on");var D=document.getElementById("drill");var seen={};var out="<b class='sans'>"+H[i][0]+"</b><br>";
+C[i].forEach(function(c){c.drv.forEach(function(d){seen[d[0]]=d[1]})});var ks=Object.keys(seen);
+out+=ks.length?ks.map(function(n){return "<div class='hit'><span class='dot' style='background:"+(seen[n]>0?"var(--pos)":"var(--neg)")+"'></span>"+NEWS[n].t+"</div>"}).join(""):"No headline touches this holding today.";D.innerHTML=out;D.style.display="block"}
+var NW=document.getElementById("news");
+NEWS.forEach(function(n){var hits=Object.keys(n.e).map(function(i){var s=n.e[i],m=s.reduce(function(a,b){return Math.abs(b)>Math.abs(a)?b:a},0);return "<div class='hit'><span class='dot' style='background:"+(m>0?"var(--pos)":"var(--neg)")+"'></span>"+H[i][0]+" ("+H[i][2]+"%)</div>"}).join("");
+var d=document.createElement("div");d.className="news";d.innerHTML="<button><div><div class='t'>"+n.t+"</div><div class='m'>"+n.src+", touches "+Object.keys(n.e).length+" holdings</div></div><span class='chev'>&#9654;</span></button><div class='body'><div class='chain'>"+n.chain.map(function(c){return "<span>"+c+"</span>"}).join("<em>&rarr;</em>")+"</div><p style='margin:0 0 8px'>"+n.why+"</p>"+hits+"</div>";
+d.firstChild.onclick=function(){d.classList.toggle("open")};NW.appendChild(d)});
+NW.firstChild.classList.add("open");
+</script></body></html>

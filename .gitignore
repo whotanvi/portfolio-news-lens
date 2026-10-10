@@ -1,0 +1,7 @@
+.streamlit/secrets.toml
+.env
+.venv/
+__pycache__/
+news_cache.json
+holdings_private*.csv
+my_holdings*.csv
