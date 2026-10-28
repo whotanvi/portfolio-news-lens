@@ -57,6 +57,8 @@ button{font:inherit;cursor:pointer}
 .news.open .chev{transform:rotate(90deg)}
 .hit{font-size:14px;margin:4px 0}
 .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+.badge{display:inline-block;font:500 12px 'Bricolage Grotesque',sans-serif;border:1px solid var(--line);border-radius:99px;padding:1px 9px;margin-left:4px}
+.sec{margin:0 0 10px}.sec b{font:700 12px 'Bricolage Grotesque',sans-serif;text-transform:uppercase;letter-spacing:.05em;color:var(--mute)}.sec p{margin:2px 0 0}
 .foot{font-size:13px;color:var(--mute);margin-top:24px}
 button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 </style></head><body><main>
@@ -105,7 +107,11 @@ C[i].forEach(function(c){c.drv.forEach(function(d){seen[d[0]]=d[1]})});var ks=Ob
 out+=ks.length?ks.map(function(n){return "<div class='hit'><span class='dot' style='background:"+(seen[n]>0?"var(--pos)":"var(--neg)")+"'></span>"+NEWS[n].t+"</div>"}).join(""):"No headline touches this holding today.";D.innerHTML=out;D.style.display="block"}
 var NW=document.getElementById("news");
 NEWS.forEach(function(n){var hits=Object.keys(n.e).map(function(i){var s=n.e[i],m=s.reduce(function(a,b){return Math.abs(b)>Math.abs(a)?b:a},0);return "<div class='hit'><span class='dot' style='background:"+(m>0?"var(--pos)":"var(--neg)")+"'></span>"+H[i][0]+" ("+H[i][2]+"%)</div>"}).join("");
-var d=document.createElement("div");d.className="news";d.innerHTML="<button><div><div class='t'>"+n.t+"</div><div class='m'>"+n.src+", touches "+Object.keys(n.e).length+" holdings</div></div><span class='chev'>&#9654;</span></button><div class='body'><div class='chain'>"+n.chain.map(function(c){return "<span>"+c+"</span>"}).join("<em>&rarr;</em>")+"</div><p style='margin:0 0 8px'>"+n.why+"</p>"+hits+"</div>";
+var d=document.createElement("div");d.className="news";var TY={direct:"Direct",read_across:"Read-across, lower confidence",macro:"Market-wide"};
+function sec(l,x){return x?"<div class='sec'><b>"+l+"</b><p>"+x+"</p></div>":""}
+var paths=(n.paths&&n.paths.length)?n.paths:[{h:[],chain:n.chain||[]}];
+var pth=paths.map(function(p){return "<div class='chain'>"+(p.h&&p.h.length?"<strong>"+p.h.map(function(q){return H[q]?H[q][0]:""}).join(", ")+":</strong>":"")+(p.chain||[]).map(function(c){return "<span>"+c+"</span>"}).join("<em>&rarr;</em>")+"</div>"}).join("");
+d.innerHTML="<button><div><div class='t'>"+n.t+"</div><div class='m'>"+n.src+" &middot; <span class='badge'>"+(TY[n.type]||"Direct")+"</span> &middot; touches "+Object.keys(n.e).length+" holdings</div></div><span class='chev'>&#9654;</span></button><div class='body'>"+sec("From the headline",n.fromH||n.why)+sec("Our inference (not stated in the headline)",n.inference)+pth+sec("Could point the other way",n.against)+hits+"</div>";
 d.firstChild.onclick=function(){d.classList.toggle("open")};NW.appendChild(d)});
 NW.firstChild.classList.add("open");
 </script></body></html>

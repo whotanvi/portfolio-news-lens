@@ -9,6 +9,7 @@ import re
 import feedparser
 import pandas as pd
 import streamlit as st
+from html import escape as esc
 import streamlit.components.v1 as components
 
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
@@ -91,7 +92,8 @@ def build_holdings(df):
     df["symbol"] = df["symbol"].astype(str).str.strip().str.upper()
     df["quantity"] = pd.to_numeric(df["quantity"], errors="coerce")
     df = df.dropna(subset=["quantity"])
-    df = df[df["quantity"] > 0].head(25)
+    df["symbol"] = df["symbol"].str.replace(r"[^A-Z0-9&.\-_]", "", regex=True)
+    df = df[(df["quantity"] > 0) & (df["symbol"] != "")].head(25)
     if df.empty:
         raise ValueError("No valid rows found. Check symbol and quantity.")
     prices = pd.to_numeric(df["buy_price"], errors="coerce") if "buy_price" in df else pd.Series([None] * len(df), index=df.index)
@@ -106,9 +108,9 @@ def build_holdings(df):
 
 SYSTEM = (
     "You are a careful equity research assistant for Indian markets. "
-    "You explain how news affects a specific portfolio, directly and indirectly, "
-    "with clear cause-and-effect reasoning. You never give price targets or numbers "
-    "forecasts. Reply with JSON only, no other text."
+    "You only state as fact what the headline text says. Anything beyond the headline "
+    "is inference and must be labelled and hedged. Never invent causes, numbers or "
+    "company details. No price targets or forecasts. Reply with JSON only."
 )
 
 
@@ -125,15 +127,20 @@ HEADLINES (index. title):
 
 Task:
 1. Give each holding a short sector name (e.g. Autos, Banks, IT, Paints, Energy, Power, Pharma, FMCG, Metals).
-2. Pick up to 8 headlines that genuinely affect at least one holding, directly or INDIRECTLY (through input costs, currency, rates, demand, etc.). Ignore the rest.
-3. For each, give a 3-step cause chain, a plain-English 'why' (max 2 sentences), and effects per affected holding.
-
-Effect values are three integers [today, this month, a year or more], each from -3 to 3.
-Sign = direction (negative = bad for the holding, positive = good). Size = how hard the news hits the business (1 mild, 2 solid, 3 severe). Judge each headline on its own. The year-or-more value is a long-term thesis, not a forecast. Do not consider portfolio weight; the app does that.
+2. Pick up to 8 headlines that genuinely affect at least one holding, directly or indirectly. Ignore the rest.
+3. For each picked headline return:
+   - "type": "direct" (the headline is about a holding or its business), "read_across" (it is about a DIFFERENT company or a peer, and we infer a spill-over), or "macro" (market-wide: rates, currency, commodities, policy).
+   - "from_headline": what the headline actually says, in one sentence. Use only facts in the headline text. Include both good and bad parts (for example profit down but revenue up).
+   - "inference": your reasoning that goes BEYOND the headline, max 2 sentences, hedged (may, could, likely). Never state an unstated cause as fact. If you are guessing why something happened, say so.
+   - "against": one sentence on what could point the other way or make the effect smaller.
+   - "paths": one entry per group of holdings that share a cause chain: {{"holdings": [holding indexes], "chain": ["step 1", "step 2", "step 3"]}}. Each chain is a single cause-and-effect path, not a list of separate points.
+   - "effects": per affected holding, [today, this month, a year or more], integers from -3 to 3. Sign = direction (negative is bad for the holding). Size = how hard the news hits that business (1 mild, 2 solid, 3 severe). Judge each headline on its own. The year-or-more value is a long-term thesis, not a forecast. Ignore portfolio weight; the app handles it. For "read_across", use only -1, 0 or 1.
 
 Return JSON exactly like:
 {{"sectors": {{"SYMBOL": "Sector"}},
- "news": [{{"headline_index": 0, "chain": ["step 1", "step 2", "step 3"], "why": "...", "effects": {{"<holding index>": [0, 0, 0]}}}}]}}"""
+ "news": [{{"headline_index": 0, "type": "direct", "from_headline": "...", "inference": "...", "against": "...",
+   "paths": [{{"holdings": [0], "chain": ["...", "...", "..."]}}],
+   "effects": {{"<holding index>": [0, 0, 0]}}}}]}}"""
     # Google renames and retires free models often, so ask Google what exists
     # instead of guessing one name. Newest stable Flash models are tried first.
     override = read_secret("GEMINI_MODEL")
@@ -169,24 +176,37 @@ Return JSON exactly like:
     if "{" not in text:
         raise RuntimeError(f"No working Gemini model found. Tried: {tried}. Last error: {last}")
     data = json.loads(text[text.index("{"): text.rindex("}") + 1])
-    H = [[s, data.get("sectors", {}).get(s, "Other"), w] for s, w in holdings]
+    clean = lambda x: re.sub(r"[^A-Za-z &/]", "", str(x))[:20].strip() or "Other"
+    H = [[s, clean(data.get("sectors", {}).get(s, "Other")), w] for s, w in holdings]
     NEWS = []
+    txt = lambda x, n=320: esc(str(x or ""))[:n]
     for item in data.get("news", []):
         idx = item.get("headline_index")
         if not isinstance(idx, int) or not 0 <= idx < len(headlines):
             continue
+        kind = item.get("type") if item.get("type") in ("direct", "read_across", "macro") else "direct"
+        cap = 1 if kind == "read_across" else 3   # peer news can never rate above Medium
         eff = {}
         for k, v in (item.get("effects") or {}).items():
             try:
                 k = int(k)
                 if 0 <= k < len(holdings) and len(v) == 3:
-                    eff[k] = [max(-3, min(3, int(x))) for x in v]
+                    eff[k] = [max(-cap, min(cap, int(x))) for x in v]
             except Exception:
                 continue
-        if eff:
-            NEWS.append({"t": headlines[idx]["title"], "src": headlines[idx]["source"],
-                         "chain": (item.get("chain") or [])[:4],
-                         "why": item.get("why", ""), "e": eff})
+        if not eff:
+            continue
+        paths = []
+        for p in (item.get("paths") or [])[:4]:
+            try:
+                hs = [int(h) for h in p.get("holdings", []) if 0 <= int(h) < len(holdings)]
+                paths.append({"h": hs, "chain": [txt(c, 120) for c in p.get("chain", [])[:4]]})
+            except Exception:
+                continue
+        NEWS.append({"t": txt(headlines[idx]["title"], 300), "src": txt(headlines[idx]["source"], 40),
+                     "type": kind, "fromH": txt(item.get("from_headline")),
+                     "inference": txt(item.get("inference")), "against": txt(item.get("against")),
+                     "paths": paths, "e": eff})
     return H, NEWS
 
 
