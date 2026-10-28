@@ -11,8 +11,9 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
-MODEL = "claude-sonnet-5-5"   # change here to switch model
-MAX_RUNS_PER_SESSION = 5       # protects your credits on a public link
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
+DEFAULT_MODEL = "gemini-2.5-flash"   # override with GEMINI_MODEL in secrets if Google renames it
+MAX_RUNS_PER_SESSION = 5       # keeps one visitor from using up the free daily quota
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 # News feeds (headline + link only; we never republish article text)
@@ -112,8 +113,8 @@ SYSTEM = (
 
 
 def analyze(holdings, headlines, key):
-    import anthropic
-    client = anthropic.Anthropic(api_key=key)
+    from openai import OpenAI   # Gemini speaks the same format as OpenAI
+    client = OpenAI(api_key=key, base_url=GEMINI_URL)
     hold_txt = "\n".join(f"{i}. {s} ({w}% of portfolio)" for i, (s, w) in enumerate(holdings))
     news_txt = "\n".join(f"{i}. {h['title']}" for i, h in enumerate(headlines))
     prompt = f"""HOLDINGS (index. NSE symbol, weight):
@@ -133,11 +134,13 @@ Sign = direction (negative = bad for the holding, positive = good). Size = how h
 Return JSON exactly like:
 {{"sectors": {{"SYMBOL": "Sector"}},
  "news": [{{"headline_index": 0, "chain": ["step 1", "step 2", "step 3"], "why": "...", "effects": {{"<holding index>": [0, 0, 0]}}}}]}}"""
-    resp = client.messages.create(
-        model=MODEL, max_tokens=8000, system=SYSTEM,
-        messages=[{"role": "user", "content": prompt}],
+    resp = client.chat.completions.create(
+        model=read_secret("GEMINI_MODEL") or DEFAULT_MODEL,
+        max_tokens=8000,
+        messages=[{"role": "system", "content": SYSTEM},
+                  {"role": "user", "content": prompt}],
     )
-    text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
+    text = resp.choices[0].message.content or ""
     data = json.loads(text[text.index("{"): text.rindex("}") + 1])
     H = [[s, data.get("sectors", {}).get(s, "Other"), w] for s, w in holdings]
     NEWS = []
@@ -170,7 +173,11 @@ def render(H, NEWS, tag):
 
 # ---------------- page ----------------
 st.title("Portfolio News Lens")
-st.caption("Add your holdings, and see what today's news means for what you own. Not investment advice.")
+st.caption("Add your holdings, and see what today's news means for what you own.")
+st.info("**Not investment advice.** This is an educational tool that reads news, not a recommendation "
+        "to buy or sell anything. Your holdings are sent to Google's Gemini API to produce the analysis, "
+        "and free-tier inputs may be used by Google to improve its products. "
+        "Please don't upload anything you wouldn't want processed there.")
 
 # Optional access code for the public link
 code = read_secret("APP_ACCESS_CODE")
@@ -202,12 +209,12 @@ if demo:
     d = load_json("demo_data.json")
     render(d["H"], d["NEWS"], "Saved sample, not real data")
 elif go:
-    key = read_secret("ANTHROPIC_API_KEY")
+    key = read_secret("GEMINI_API_KEY")
     st.session_state["runs"] = st.session_state.get("runs", 0) + 1
     if df is None:
         st.error("Add some holdings first.")
     elif not key:
-        st.error("No API key found. Add ANTHROPIC_API_KEY to your secrets.")
+        st.error("No API key found. Add GEMINI_API_KEY to your secrets.")
     elif st.session_state["runs"] > MAX_RUNS_PER_SESSION:
         st.warning("Run limit reached for this session.")
     else:
@@ -224,4 +231,9 @@ elif go:
                     st.info("None of today's headlines clearly affect these holdings.")
                 render(H, NEWS, f"Your portfolio, {len(headlines)} headlines ({how})")
         except Exception as e:
-            st.error(f"Something went wrong: {e}")
+            msg = str(e).lower()
+            if "429" in msg or "quota" in msg or "rate" in msg:
+                st.warning("The free daily limit has been reached. Please try again later, "
+                           "or use the saved demo button.")
+            else:
+                st.error(f"Something went wrong: {e}")

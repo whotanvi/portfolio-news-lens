@@ -1,5 +1,5 @@
 # Portfolio News Lens
-Upload your holdings; the app fetches today's market headlines and uses Claude to trace each one
+Upload your holdings; the app fetches today's market headlines and uses Google Gemini (free tier) to trace each one
 (directly and indirectly) to your portfolio, rating impact Low / Medium / High for today, this month
 and a year or more. Impact = how hard the news hits the business x how much of your portfolio sits there.
 No price forecasts. Not investment advice.
