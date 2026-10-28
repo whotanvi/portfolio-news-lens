@@ -134,13 +134,40 @@ Sign = direction (negative = bad for the holding, positive = good). Size = how h
 Return JSON exactly like:
 {{"sectors": {{"SYMBOL": "Sector"}},
  "news": [{{"headline_index": 0, "chain": ["step 1", "step 2", "step 3"], "why": "...", "effects": {{"<holding index>": [0, 0, 0]}}}}]}}"""
-    resp = client.chat.completions.create(
-        model=read_secret("GEMINI_MODEL") or DEFAULT_MODEL,
-        max_tokens=8000,
-        messages=[{"role": "system", "content": SYSTEM},
-                  {"role": "user", "content": prompt}],
-    )
-    text = resp.choices[0].message.content or ""
+    # Google renames and retires free models often, so ask Google what exists
+    # instead of guessing one name. Newest stable Flash models are tried first.
+    override = read_secret("GEMINI_MODEL")
+    if override:
+        models = [override]
+    else:
+        try:
+            ids = [m.id.replace("models/", "") for m in client.models.list()]
+        except Exception:
+            ids = []
+        ids = [i for i in ids if i.startswith("gemini") and "flash" in i
+               and not any(x in i for x in ("image", "tts", "live", "audio", "embed", "robotics"))]
+        ids.sort(reverse=True)                                   # higher version first
+        ids.sort(key=lambda i: ("lite" in i, "preview" in i or "exp" in i))  # stable first
+        models = ids[:4] + [DEFAULT_MODEL]
+    text, last, tried = "", None, []
+    for model in models:
+        tried.append(model)
+        try:
+            resp = client.chat.completions.create(
+                model=model,
+                max_tokens=8000,
+                messages=[{"role": "system", "content": SYSTEM},
+                          {"role": "user", "content": prompt}],
+            )
+            text = resp.choices[0].message.content or ""
+            if "{" in text:
+                break
+        except Exception as e:
+            last = e
+            if "401" in str(e) or "api key" in str(e).lower():
+                break
+    if "{" not in text:
+        raise RuntimeError(f"No working Gemini model found. Tried: {tried}. Last error: {last}")
     data = json.loads(text[text.index("{"): text.rindex("}") + 1])
     H = [[s, data.get("sectors", {}).get(s, "Other"), w] for s, w in holdings]
     NEWS = []
